@@ -14,7 +14,7 @@ class Task:
     # using datetime import
     created_at:datetime
 
-@strawberry.type
+@strawberry.input
 class CreateTaskInput:
     title:str
     description:str
@@ -23,10 +23,15 @@ class CreateTaskInput:
     due_date:date 
     # graphql creates datetime automatically
     # created_at:datetime
-@strawberry.type
+@strawberry.input
 class UpdateTaskInput:
     title:str
     description:str
     status:str
     priority:str
     due_date:date 
+
+@strawberry.type
+class DeleteTaskResponse:
+    success:bool
+    message:str 
