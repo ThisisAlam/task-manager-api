@@ -4,15 +4,40 @@ from sqlalchemy import (
     DateTime,
     Integer,
     String,
+    ForeignKey,
 )
 from sqlalchemy.orm import (
     DeclarativeBase, 
     Mapped, 
     mapped_column,
+    relationship,
 )
 class Base(DeclarativeBase):
     pass
-
+class UserModel(Base):
+    __tablename__="users"
+    id:Mapped[int]=mapped_column(
+        Integer,
+        primary_key=True,
+        autoincrement=True,
+    )
+    username: Mapped[str]= mapped_column(
+        String(50),
+        unique=True,
+        nullable=False,
+    )
+    email: Mapped[str]= mapped_column(
+        String(255),
+        unique=True,
+        nullable=False,
+    )
+    password: Mapped[str]= mapped_column(
+        String(255),
+        nullable=False,
+    )
+    tasks: Mapped["TaskModel"]=relationship(
+        back_populates="owner",
+    )
 class TaskModel(Base):
     __tablename__="tasks"
     id:Mapped[int]=mapped_column(
@@ -43,4 +68,11 @@ class TaskModel(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
         default=datetime.utcnow,
+    )
+    owner_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id"),
+        nullable=False,
+    )
+    owner: Mapped["UserModel"] = relationship(
+        back_populates="tasks",
     )

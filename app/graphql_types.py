@@ -23,6 +23,7 @@ class CreateTaskInput:
     due_date:date 
     # graphql creates datetime automatically
     # created_at:datetime
+
 @strawberry.input
 class UpdateTaskInput:
     title:str
@@ -35,3 +36,25 @@ class UpdateTaskInput:
 class DeleteTaskResponse:
     success:bool
     message:str 
+
+@strawberry.type
+class User:
+    id:int
+    username:str
+    email:str
+
+@strawberry.input
+class RegisterUserInput:
+    username:str
+    email:str
+    password:str
+
+@strawberry.input
+class LoginInput:
+    email:str
+    password:str
+
+@strawberry.type
+class LoginResponse:
+    access_token:str
+    token_type:str
