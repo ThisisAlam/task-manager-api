@@ -1,3 +1,4 @@
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from app.models import (
     TaskModel, 
@@ -12,10 +13,18 @@ from app.graphql_types import (
     LoginResponse,
     Task,
     User,
+    TaskSortField,
+    SortOrder
 )
 from app.security import (
     hash_password, 
     verify_password
+)
+from app.exceptions import (
+    TaskNotFoundError,
+    AuthenticationError,
+    AuthorizationError,
+    DuplicateEmailError,
 )
 from app.jwt_handler import create_access_token
 
@@ -24,13 +33,50 @@ def get_task_by_id(
     task_id:int
 ):
     query = session.get(TaskModel, task_id)
+    if query is None:
+        raise TaskNotFoundError("Task not found.")
     return query
 
-def get_all_tasks(
-    session:Session
+def get_tasks(
+    session:Session,
+    page:int,
+    page_size:int,
+    status: str | None=None,
+    priority:str | None=None,
+    search: str | None=None,
+    sort_by: TaskSortField = TaskSortField.CREATED_AT,
+    order: SortOrder = SortOrder.DESC,
 ):
-    query = session.query(TaskModel).all()
-    return query
+    offset = (page - 1) * page_size
+    query = session.query(TaskModel)
+    if status:
+        query = query.filter(TaskModel.status == status)
+    if priority:
+        query = query.filter(TaskModel.priority == priority)
+    if search:
+        query = query.filter(
+            or_(
+                TaskModel.title.ilike(f"%{search}%"),
+                TaskModel.description.ilike(f"%{search}%"),
+            )
+        )
+    sort_columns = {
+        TaskSortField.CREATED_AT: TaskModel.created_at,
+        TaskSortField.DUE_DATE: TaskModel.due_date,
+        TaskSortField.TITLE: TaskModel.title,
+    }
+    column = sort_columns[sort_by]
+    if order == SortOrder.ASC:
+        query = query.order_by(column.asc())
+    else:
+        query = query.order_by(column.desc())
+
+    return (
+        query
+        .offset(offset)
+        .limit(page_size)
+        .all()
+    )
 
 def get_user_by_id(
     session:Session,
@@ -78,11 +124,12 @@ def update_task(
 ):
     task = get_task_by_id(session,task_id)
     if task is None:
-        return None
+        raise TaskNotFoundError("Task not found.")
     if task.owner_id != current_user.id:
-        raise Exception(
-            "Not authorized."
-        )
+        raise AuthorizationError("Not authorized.")
+        # Exception(
+        #     "Not authorized."
+        # )
     task.title=input.title
     task.description=input.description
     task.status=input.status
@@ -102,9 +149,10 @@ def delete_task(
     if task is None:
         return False
     if task.owner_id != current_user.id:
-        raise Exception(
-            "Not authorized."
-        )
+        raise AuthorizationError("Not authorized.")
+        # Exception(
+        #     "Not authorized."
+        # )
     session.delete(task)
     session.commit()
     return True
@@ -133,12 +181,12 @@ def login_user(
         input.email
     )
     if user is None:
-        return None
+        raise AuthenticationError("Invalid email or password.")
     if not verify_password(
         input.password,
         user.password,
     ):
-        return None
+        raise AuthenticationError("Invalid Email and Password.")
     token = create_access_token(user.id)
     return LoginResponse(
         access_token=token,

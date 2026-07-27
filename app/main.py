@@ -5,7 +5,6 @@ from app.schema import schema
 from app.jwt_handler import verify_access_token
 from app.database import SessionLocal
 from app.services import get_user_by_id
-
 app=FastAPI()
 async def get_context(request:Request):
     session=SessionLocal()
@@ -25,18 +24,14 @@ async def get_context(request:Request):
         )
     finally:
         session.close()
-
-
 graphql_app = GraphQLRouter(
     schema,
     context_getter=get_context,
 )
-
 app.include_router(
     graphql_app,
     prefix="/graphql",
 )
-
 @app.get("/")
 def root():
     return {

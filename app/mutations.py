@@ -25,6 +25,18 @@ from app.models import (
     TaskModel, 
     UserModel
 )
+from app.validators import (
+    validate_create_task,
+    validate_login_user,
+    validate_register_user,
+    validate_update_task,
+)
+from app.exceptions import (
+    TaskNotFoundError,
+    AuthenticationError,
+    AuthorizationError,
+    DuplicateEmailError,
+)
 
 @strawberry.type
 class Mutation:
@@ -37,9 +49,10 @@ class Mutation:
         session = info.context.session
         current_user = info.context.user
         if current_user is None:
-            raise Exception(
+            raise AuthenticationError(
                 "Authentication required."
             )
+        validate_create_task(input)
         db_task = create_task(
             session=session,
             input=input,
@@ -56,19 +69,19 @@ class Mutation:
     ) -> Task | None:
         session = info.context.session
         current_user = info.context.user
-        try:
-            db_task = update_task(
-                session=session,
-                task_id=id,
-                input=input,
-                current_user=current_user,
-            )
-            if db_task is None:
-                return None
-            return to_graphql_task(db_task)
-        finally:
-            session.close()
-
+        if current_user is None:
+            raise AuthenticationError(
+                "Authentication required."
+        )
+        validate_update_task(input)
+        db_task = update_task(
+            session=session,
+            task_id=id,
+            input=input,
+            current_user=current_user,
+        )
+        return to_graphql_task(db_task)
+    
     @strawberry.mutation
     def delete_task(
         self,
@@ -77,6 +90,10 @@ class Mutation:
     ) -> DeleteTaskResponse:
         session = info.context.session
         current_user = info.context.user
+        if current_user is None:
+            raise AuthenticationError(
+                "Authentication required."
+        )
         deleted = delete_task(
             session=session,
             task_id=id,
@@ -95,30 +112,26 @@ class Mutation:
     @strawberry.mutation
     def register(
         self,
-        input: RegisterUserInput
+        input: RegisterUserInput,
+        info: strawberry.Info,
     ) -> User | None:
-        session = SessionLocal()
-        try:
-            db_user= register_user(
-                session=session,
-                input=input,
-            )
-            if db_user is None:
-                return None
-            return to_graphql_user(db_user)
-        finally:
-            session.close()
-    
+        session = info.context.session
+        validate_register_user(input)
+        db_user = register_user(
+            session=session,
+            input=input,
+        )
+        return to_graphql_user(db_user)
+        
     @strawberry.mutation
     def login(
         self,
         input: LoginInput,
+        info: strawberry.Info,
     ) -> LoginResponse | None:
-        session = SessionLocal()
-        try:
-            return login_user(
-                session=session,
-                input=input,
-            )
-        finally:
-            session.close()
+        session = info.context.session
+        validate_login_user(input)
+        return login_user(
+            session=session,
+            input=input,
+        )

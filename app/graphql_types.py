@@ -1,5 +1,5 @@
 from datetime import date, datetime
-
+from enum import Enum
 import strawberry
 
 @strawberry.type
@@ -58,3 +58,14 @@ class LoginInput:
 class LoginResponse:
     access_token:str
     token_type:str
+
+@strawberry.enum
+class TaskSortField(Enum):
+    CREATED_AT = "created_at"
+    DUE_DATE = "due_date"
+    TITLE = "title"
+
+@strawberry.enum
+class SortOrder(Enum):
+    ASC = "asc"
+    DESC = "desc"
