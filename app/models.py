@@ -69,6 +69,10 @@ class TaskModel(Base):
         DateTime,
         default=datetime.utcnow,
     )
+    estimated_hours: Mapped[int] = mapped_column(
+        Integer,
+        nullable=True,
+    )
     owner_id: Mapped[int] = mapped_column(
         ForeignKey("users.id"),
         nullable=False,
